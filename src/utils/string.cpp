@@ -8,6 +8,20 @@ string::string(const char* str) : _length(0), _capacity(10), _str(new char[10]) 
 	}
 }
 
+bool string::operator==(const string& other) {
+	if (_length != other._length) {
+		return false;
+	}
+
+	for (ui32 i = 0; i < _length; i++) {
+		if (_str[i] != other._str[i]) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 string::operator char*() const {
 	char* cstr = new char[_length];
 

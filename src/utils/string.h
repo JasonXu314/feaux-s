@@ -8,7 +8,7 @@ public:
 	string() : _length(0), _capacity(0), _str(nullptr) {}
 	string(const char* str);
 
-	bool operator==(const string* other);
+	bool operator==(const string& other);
 
 	operator char*() const;
 
