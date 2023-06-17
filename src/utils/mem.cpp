@@ -1,4 +1,5 @@
 #ifdef MEM_POLYFILL
+
 #include "mem.h"
 
 ui64 __MEM_IMPL::nextAddr = PAGESIZE;  // nullptr page is inaccessible and should be entirely blank
@@ -156,4 +157,5 @@ void operator delete[](void* ptr) noexcept { free(ptr); }
 browser {
 	expose void __init_mem() { __MEM_IMPL::__init(); }
 }
+
 #endif
