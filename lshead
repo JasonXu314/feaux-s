@@ -1,0 +1,13 @@
+#! /bin/bash
+MODULE=$1
+FILES=""
+
+for file in $(ls "src/$MODULE")
+do
+	case $file in
+		*.h) FILES="$FILES src/$MODULE/$file"
+		;;
+	esac
+done
+
+echo "$FILES"

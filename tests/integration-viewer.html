@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Integration Test Viewer</title>
+		<script>
+			function handleCstr(fn, mem) {
+				return (ptr) => fn(readCstr(ptr, mem));
+			}
+
+			function readCstr(ptr, mem) {
+				let str = '',
+					char;
+
+				while ((char = mem.getInt8(ptr++)) !== 0) {
+					str += String.fromCharCode(char);
+				}
+
+				return str;
+			}
+		</script>
+	</head>
+	<body>
+		<script>
+			(async () => {
+				const memory = new WebAssembly.Memory({ initial: 320 });
+				let program = await WebAssembly.instantiateStreaming(fetch('integration/bin/type-sizes.wasm'), { env: { memory } });
+
+				const TYPES = ['i8', 'i16', 'i32', 'i64', 'ui8', 'ui16', 'ui32', 'ui64'];
+
+				function getSize(type) {
+					return program.instance.exports[type + 's']() * 8;
+				}
+
+				let allGood = true;
+				TYPES.map((type) => [type, parseInt(type.replace('u', '').slice(1)) === getSize(type)]).forEach(([type, match]) => {
+					if (!match) {
+						allGood = false;
+						console.error(`Type ${type} did not match size (${getSize(type)})`);
+					}
+				});
+
+				if (allGood) {
+					console.log('Type sizes all good');
+				}
+
+				window.types = program.instance.exports;
+			})();
+		</script>
+		<script>
+			(async () => {
+				const memory = new WebAssembly.Memory({ initial: 320 });
+				let program = await WebAssembly.instantiateStreaming(fetch('integration/bin/hw-sizes.wasm'), { env: { memory } });
+
+				let allGood = true;
+
+				if (program.instance.exports.registers() !== 18 * 8) {
+					allGood = false;
+					console.error(`Registers size not match (${program.instance.exports.registers()})`);
+				}
+
+				if (allGood) {
+					console.log('Hardware sizes all good');
+				}
+
+				window.hw = program.instance.exports;
+			})();
+		</script>
+		<script>
+			(async () => {
+				const memory = new WebAssembly.Memory({ initial: 320 });
+				const mem = new DataView(memory.buffer);
+
+				let program = await WebAssembly.instantiateStreaming(fetch('integration/bin/interop.wasm'), {
+					env: { clg: handleCstr(console.log, mem), memory }
+				});
+
+				program.instance.exports.cprint();
+
+				window.interop = program.instance.exports;
+			})();
+		</script>
+		<script>
+			(async () => {
+				const memory = new WebAssembly.Memory({ initial: 320 });
+				const mem = new DataView(memory.buffer);
+
+				let program = await WebAssembly.instantiateStreaming(fetch('integration/bin/fundamentals.wasm'), {
+					env: {
+						jsthrow: handleCstr((str) => {
+							throw new Error(str);
+						}, mem),
+						jslogn: console.log,
+						jsfassert: (expr, file, line, fn) => {
+							throw new Error(`${readCstr(file, mem)}:${line}: ${readCstr(fn, mem)}: Assertion \`${readCstr(expr, mem)}\` failed.`);
+						},
+						memory
+					}
+				});
+
+				program.instance.exports.__init_mem();
+
+				console.log(program.instance.exports.allocAndWrite());
+
+				window.fundamentals = { ...program.instance.exports, memory };
+
+				console.log(memory);
+			})();
+		</script>
+		<script>
+			(async () => {
+				const memory = new WebAssembly.Memory({ initial: 320 });
+				const mem = new DataView(memory.buffer);
+
+				let program = await WebAssembly.instantiateStreaming(fetch('integration/bin/strings.wasm'), {
+					env: {
+						jsthrow: handleCstr((str) => {
+							throw new Error(str);
+						}, mem),
+						jslogn: console.log,
+						jsfassert: (expr, file, line, fn) => {
+							throw new Error(`${readCstr(file, mem)}:${line}: ${readCstr(fn, mem)}: Assertion \`${readCstr(expr, mem)}\` failed.`);
+						},
+						memory
+					}
+				});
+
+				program.instance.exports.__init_mem();
+
+				console.log(readCstr(program.instance.exports.mkstr(), mem));
+
+				window.fundamentals = { ...program.instance.exports, memory };
+
+				console.log(memory);
+			})();
+		</script>
+		<!-- <script>
+			(async () => {
+				const request = await fetch('integration/bin/type-sizes.wasm');
+				const binary = await request.arrayBuffer();
+
+				const memory = new WebAssembly.Memory({ initial: 32 });
+				let program = await WebAssembly.instantiate(binary);
+
+				const REGS = [
+					'rax',
+					'eax',
+					'ax',
+					'al',
+					'rcx',
+					'ecx',
+					'cx',
+					'cl',
+					'rdx',
+					'edx',
+					'dx',
+					'dl',
+					'rbx',
+					'ebx',
+					'bx',
+					'bl',
+					'rsi',
+					'esi',
+					'si',
+					'sil',
+					'rdi',
+					'edi',
+					'di',
+					'dil',
+					'rsp',
+					'esp',
+					'sp',
+					'spl',
+					'rbp',
+					'ebp',
+					'bp',
+					'bpl',
+					'r8',
+					'r8d',
+					'r8w',
+					'r8b',
+					'r9',
+					'r9d',
+					'r9w',
+					'r9b',
+					'r10',
+					'r10d',
+					'r10w',
+					'r10b',
+					'r11',
+					'r11d',
+					'r11w',
+					'r11b',
+					'r12',
+					'r12d',
+					'r12w',
+					'r12b',
+					'r13',
+					'r13d',
+					'r13w',
+					'r13b',
+					'r14',
+					'r14d',
+					'r14w',
+					'r14b',
+					'r15',
+					'r15d',
+					'r15w',
+					'r15b'
+				];
+
+				window.regs = program.instance.exports;
+			})();
+		</script> -->
+	</body>
+</html>
+
